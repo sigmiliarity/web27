@@ -1,1 +1,89 @@
-<!DOCTYPE html><html><head><script>const PREFIX = "Balatro_vanilla_";const originalOpen = indexedDB.open;const originalDeleteDatabase = indexedDB.deleteDatabase;indexedDB.open = function(name, version) {const prefixedName = PREFIX + name;return version !== undefined?originalOpen.call(this, prefixedName, version):originalOpen.call(this, prefixedName);};indexedDB.deleteDatabase = function(name) {const prefixedName = PREFIX + name;return originalDeleteDatabase.call(this, prefixedName);};</script><script src="love.min.js"></script><title>Love.js</title><style>#canvas {position:absolute;top: 0;left: 0;width: 100vw;height: 100vh;}body {width: 100vw;height: 100vh;margin: 0px;}</style></head><body><canvas id="canvas"></canvas><script src="module.js"></script><script>(async()=>{const d=await getSource();Module={INITIAL_MEMORY:2**28,canvas:canvas,printErr:console.error,arguments:["game.love"]};Module.preRun = [function(){Module.addRunDependency("fp game.love");var ptr = Module.getMemory(d.length);Module['HEAPU8'].set(d, ptr);Module.FS_createDataFile('/', "game.love", d, true, true, true);Module.removeRunDependency("fp game.love")}];Love(Module)})()</script></body></html>
+<!DOCTYPE html>
+<html>
+<head>
+    <script>
+        const PREFIX = "Balatro_vanilla_";
+        const originalOpen = indexedDB.open;
+        const originalDeleteDatabase = indexedDB.deleteDatabase;
+        indexedDB.open = function(name, version) {
+            const prefixedName = PREFIX + name;
+            return version !== undefined ? originalOpen.call(this, prefixedName, version) : originalOpen.call(this, prefixedName);
+        };
+        indexedDB.deleteDatabase = function(name) {
+            const prefixedName = PREFIX + name;
+            return originalDeleteDatabase.call(this, prefixedName);
+        };
+    </script>
+    <script src="love.min.js"></script>
+    <title>Love.js</title>
+    <style>
+        #canvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; }
+        body { width: 100vw; height: 100vh; margin: 0px; background-color: black; }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <script>
+        async function startEngine() {
+            // 1. Define the 5 parts we split earlier
+            const parts = [
+                'module.js.part1', 
+                'module.js.part2', 
+                'module.js.part3', 
+                'module.js.part4', 
+                'module.js.part5'
+            ];
+
+            console.log("Downloading engine parts...");
+            
+            try {
+                // 2. Fetch all parts and convert to blobs
+                const responses = await Promise.all(parts.map(p => fetch(p).then(r => {
+                    if (!r.ok) throw new Error(`Failed to load ${p}`);
+                    return r.blob();
+                })));
+
+                // 3. Combine parts into one virtual script file
+                const blob = new Blob(responses, { type: 'application/javascript' });
+                const scriptUrl = URL.createObjectURL(blob);
+
+                // 4. Inject the combined script into the document
+                const script = document.createElement('script');
+                script.src = scriptUrl;
+                
+                // 5. Wait for the big script to be fully parsed before starting the game
+                script.onload = async () => {
+                    console.log("Engine loaded. Starting game...");
+                    const d = await getSource();
+                    
+                    window.Module = {
+                        INITIAL_MEMORY: 2**28,
+                        canvas: document.getElementById('canvas'),
+                        printErr: console.error,
+                        arguments: ["game.love"]
+                    };
+
+                    Module.preRun = [function() {
+                        Module.addRunDependency("fp game.love");
+                        var ptr = Module.getMemory(d.length);
+                        Module['HEAPU8'].set(d, ptr);
+                        Module.FS_createDataFile('/', "game.love", d, true, true, true);
+                        Module.removeRunDependency("fp game.love");
+                    }];
+
+                    Love(Module);
+                };
+
+                document.head.appendChild(script);
+
+            } catch (err) {
+                console.error("Critical error loading parts:", err);
+            }
+        }
+
+        // Run the custom loader
+        startEngine();
+    </script>
+</body>
+</html>
